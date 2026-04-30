@@ -16,7 +16,8 @@ This package provides you two eBPF programs:
 I recommend use first one IF you have eBPF LSM module enabled in your kernel. You can check it by calling
 ```
 cat /sys/kernel/security/lsm
-``` and checking if `bpf` is there.
+```
+and checking if `bpf` is there.
 
 If you don't have eBPF LSM module, use second program, it's more *rude* but protects as well.
 
