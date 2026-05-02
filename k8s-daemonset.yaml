@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: copyfail-ebpf
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: copyfail-ebpf
+rules:
+  - apiGroups:
+      - policy
+    resources:
+      - podsecuritypolicies
+    verbs:
+      - use
+  - apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - selfsubjectaccessreviews
+      - selfsubjectrulesreviews
+    verbs:
+      - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: copyfail-ebpf
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: copyfail-ebpf
+subjects:
+  - kind: ServiceAccount
+    name: copyfail-ebpf
+    namespace: kube-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: copyfail-ebpf
+  namespace: kube-system
+  labels:
+    app: copyfail-ebpf
+spec:
+  selector:
+    matchLabels:
+      app: copyfail-ebpf
+  template:
+    metadata:
+      labels:
+        app: copyfail-ebpf
+    spec:
+      serviceAccountName: copyfail-ebpf
+      hostPID: true
+      hostNetwork: true
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: mitigation
+          image: copyfail-ebpf:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: bpffs
+              mountPath: /sys/fs/bpf
+            - name: securityfs
+              mountPath: /sys/kernel/security
+              readOnly: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - kill
+                  - -SIGTERM
+                  - "1"
+      volumes:
+        - name: bpffs
+          hostPath:
+            path: /sys/fs/bpf
+        - name: securityfs
+          hostPath:
+            path: /sys/kernel/security

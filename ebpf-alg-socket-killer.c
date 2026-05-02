@@ -17,11 +17,17 @@
  **/
 #include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
+#include "event.h"
 
 char LICENSE[] SEC("license") = "GPL";
 
 #define AF_ALG 38
 #define SIGKILL 9
+
+struct {
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 1 << 24);
+} events SEC(".maps");
 
 SEC("tracepoint/syscalls/sys_enter_socket")
 int ebpf_alg_socket_killer(struct trace_event_raw_sys_enter* ctx)
@@ -35,6 +41,15 @@ int ebpf_alg_socket_killer(struct trace_event_raw_sys_enter* ctx)
     return 0;
   }
   bpf_printk("Killing app for AF_ALG socket creation\n"); // information for audit later
+  struct event *e = bpf_ringbuf_reserve(&events, sizeof(*e), 0);
+  if (e) {
+    e->pid = bpf_get_current_pid_tgid() >> 32;
+    e->uid = uid_gid;
+    e->gid = uid_gid >> 32;
+    bpf_get_current_comm(&e->comm, sizeof(e->comm));
+    e->action = EVENT_ACTION_KILLED;
+    bpf_ringbuf_submit(e, 0);
+  }
   bpf_send_signal(SIGKILL);
   return 0;
 }
