@@ -40,7 +40,7 @@ The container image (`ghcr.io/iwanhae/copyfail-ebpf:latest`) bundles two eBPF pr
 | `ebpf-alg-socket-filter` | `lsm/socket_create` | Denies socket creation (returns error) | BPF LSM enabled |
 | `ebpf-alg-socket-killer` | `tracepoint/sys_enter_socket` | Kills the offending process (`SIGKILL`) | Any kernel with tracepoints |
 
-Both programs skip kernel-internal sockets and root (uid 0) processes. Events are logged via a BPF ring buffer:
+Both programs skip kernel-internal sockets. AF_ALG socket creation is blocked for all UIDs (including root). Events are logged via a BPF ring buffer:
 
 ```
 [2026-05-02 14:30:15] BLOCKED AF_ALG socket: pid=1234 uid=1000 gid=1000 comm="python3"
@@ -69,8 +69,8 @@ Both programs skip kernel-internal sockets and root (uid 0) processes. Events ar
  │  │   Hook: sys_enter_socket           │  │
  │  │   Action: SIGKILL                  │  │
  │  │                                    │  │
- │  │  Both: skip kernel sockets, skip   │  │
- │  │        root, only block AF_ALG     │  │
+ │  │  Both: skip kernel sockets, only   │  │
+ │  │  block AF_ALG (all UIDs)           │  │
  │  └────────────────────────────────────┘  │
  └──────────────────────────────────────────┘
 ```
@@ -93,7 +93,7 @@ If `bpf` appears in the comma-separated list, the LSM filter is used (preferred)
 
 ## Important Notes
 
-- **Root exemption:** Processes running as root (uid 0) are always allowed to create `AF_ALG` sockets (needed for VPNs and system services).
+- **All UIDs blocked:** AF_ALG socket creation is blocked for all users including root, as any process can trigger the vulnerability.
 - **Privileged required:** The DaemonSet requires `privileged: true` and access to `/sys/fs/bpf`.
 - **Supported architectures:** `x86_64` / `amd64` and `aarch64` / `arm64`.
 - **CO-RE:** eBPF programs use BTF/CO-RE for portability across kernel versions.
