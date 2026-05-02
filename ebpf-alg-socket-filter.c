@@ -40,9 +40,6 @@ int BPF_PROG(ebpf_alg_socket_filter, int family, int type, int protocol, int ker
     return 0;
   }
   __u64 uid_gid = bpf_get_current_uid_gid();
-  if (uid_gid == 0) { // allow root(0:0) to do anything (e.g. to run VPNs)
-    return 0;
-  }
   bpf_printk("Blocking AF_ALG socket creation\n"); // information for audit later
   struct event *e = bpf_ringbuf_reserve(&events, sizeof(*e), 0);
   if (e) {
