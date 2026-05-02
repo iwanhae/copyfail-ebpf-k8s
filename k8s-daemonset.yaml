@@ -67,8 +67,8 @@ spec:
         - operator: Exists
       containers:
         - name: mitigation
-          image: copyfail-ebpf:latest
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/iwanhae/copyfail-ebpf:latest
+          imagePullPolicy: Always
           securityContext:
             privileged: true
           volumeMounts:
@@ -76,6 +76,9 @@ spec:
               mountPath: /sys/fs/bpf
             - name: securityfs
               mountPath: /sys/kernel/security
+              readOnly: true
+            - name: debugfs
+              mountPath: /sys/kernel/debug
               readOnly: true
           resources:
             requests:
@@ -98,3 +101,6 @@ spec:
         - name: securityfs
           hostPath:
             path: /sys/kernel/security
+        - name: debugfs
+          hostPath:
+            path: /sys/kernel/debug
